@@ -31,6 +31,7 @@ const (
 	// IDENTIFIERS + LITERALS
 	IDENT = "IDENT"
 	INT   = "INT"
+	STRING = "STRING"
 
 	// OPERATORS
 	ASSIGN   = "="
