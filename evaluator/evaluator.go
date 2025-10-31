@@ -152,7 +152,7 @@ func evalIdentifier(
 	if builtin, ok := builtins[node.Value]; ok {
 		return builtin
 	}
-	return newError("identifier not found: " + node.Value)
+	return newError("identifier not found: %s", node.Value)
 }
 
 func applyFunction(fn object.Object, args []object.Object) object.Object {
