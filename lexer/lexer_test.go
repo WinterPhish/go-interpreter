@@ -24,6 +24,7 @@ return false;
 10 != 9;
 "foobar"
 "foo bar"
+[1, 2];
 `
 
 	tests := []struct {
@@ -105,6 +106,12 @@ return false;
 		{token.SEMICOLON, ";"},
 		{token.STRING, "foobar"},
 		{token.STRING, "foo bar"},
+		{token.LBRACKET, "["},
+		{token.INT, "1"},
+		{token.COMMA, ","},
+		{token.INT, "2"},
+		{token.RBRACKET, "]"},
+		{token.SEMICOLON, ";"},
 		{token.EOF, ""},
 	}
 
