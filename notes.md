@@ -193,3 +193,104 @@ If something goes wrong, the evaluator returns an Error object.
 ```log
 ERROR: type mismatch: INTEGER + BOOLEAN
 ```
+
+# Chapter 4: Extending
+
+- Strings
+- Arrays
+- Hash/Dict (key/value map)
+- Built-in functions
+
+
+### Strings
+A string literal in Monkey is enclosed in double quotes:  
+`"Hello World!"`
+
+A string is text between double quotes, e.g. "Hello".  
+The lexer reads until the next " and emits a STRING token:  
+`{Type: STRING, Literal: "Hello"}`
+
+Parsing  
+A new AST node is added:  
+```go
+type StringLiteral struct {
+  Token token.Token
+  Value string
+}
+```
+The parser simply wraps the literal into this node.
+
+
+Evaluation  
+A new runtime type:  
+```go
+type String struct { Value string }
+```
+When evaluated, a string literal becomes a String object.  
+The evaluator also adds `+` concatenation:  
+`"Hello"` + `"World"` → `"HelloWorld"`
+
+Strings now behave as first-class data values.
+
+### Built-in functions
+To make Monkey more practical, Go functions are exposed as built-ins.  
+Each built-in is represented by:
+```go
+type Builtin struct { Fn func(args ...Object) Object }
+```
+Example: len
+```go
+len("abc") → 3
+len([1,2,3]) → 3
+```
+
+`len` checks its argument’s type and returns an integer.  
+If called incorrectly, it produces a Monkey error object.
+
+Other built-ins like `first`, `rest`, `push`, and `last` work on arrays.  
+Built-ins demonstrate how to connect host-language functions (Go) to interpreted functions (Monkey).
+
+### Arrays
+Arrays are written with square brackets:  
+```go
+[1, 2, 3, 4]
+```
+Parsed into an `ArrayLiteral` node containing a list of expressions.
+
+To support indexing:  
+```go
+myArray[1]
+```
+We add an IndexExpression node linking the array and index expressions.
+
+A new object type:
+```go
+type Array struct { Elements []Object }
+```
+Index evaluation checks bounds and returns null for out-of-range access.  
+Arrays are immutable; functions like push return new arrays instead of modifying existing ones.
+
+### Hashes (Key-Value Maps)
+```go
+{"name": "Thorsten", "age": 28}
+```
+Keys and values are expressions separated by `:`.
+
+
+Only certain object types can be used as keys: integers, booleans, and strings.  
+They implement:
+```go
+type Hashable interface {
+  HashKey() HashKey
+}
+```
+A HashKey combines the type and a numeric hash value.
+
+
+Each key–value pair is evaluated, hashed, and stored in:
+```go
+type Hash struct {
+  Pairs map[HashKey]HashPair
+}
+```
+Indexing, e.g. person["name"], retrieves the corresponding value or returns null if missing.
