@@ -298,3 +298,4 @@ type Hash struct {
 Indexing, e.g. person["name"], retrieves the corresponding value or returns null if missing.
 
 # TODO MACROS
+# tom
