@@ -297,5 +297,48 @@ type Hash struct {
 ```
 Indexing, e.g. person["name"], retrieves the corresponding value or returns null if missing.
 
-# TODO MACROS
-# tom
+tom
+
+# Chapter 5: Macros  
+Inspired by Lisp/Elexir syntactic macros (not just text-based).  
+### Macro Systems
+
+Two broad categories:  
+- Text-substitution macros (like C preprocessor): operate purely on text, before compilation.  
+- Syntactic macros: treat code as data (AST), allowing the language to manipulate its own structure.
+
+Macros being implemented are a syntactic macro system.
+
+### Quote and Unquote
+
+- `quote(...)` prevents the evaluation of its argument. Instead, it returns the AST node representration of that code.  
+- `unquote(...)` allows evaluatoin inside a quoted expression. This lets you splice evaluated code into a quoted AST.
+
+```
+quote(8 + unquote(4 + 4)) -> QUOTE((8+8))
+```
+
+### Implementation details
+#### Quote
+A new runtime object `object.Quote` wraps an AST node. It has a custom `Inspect` that shows the code structure.  
+In the evaluator, when `Eval` sees a `quote(...)` call, it does not evaluate the argument and returns a Quote object directly.  
+
+#### Macro
+Macro literal is similar to fn but to define macros. When it is defined, its body isnt executed immediately. It's stored to be expanded later.  
+Macro expansion happens before normal evaluation. It expands macro calls, replacing them with the quoted AST.
+
+Define:
+```
+let unless = macro(condition, consequence, alternative) {
+  quote(if (!(unquote(condition))) {
+    unquote(consequence);
+  } else {
+    unquote(alternative);
+  });
+};
+```
+Use:
+```
+unless(10 > 5, puts("not greater"), puts("greater"));
+// only “greater” is printed
+```
