@@ -205,7 +205,7 @@ ERROR: type mismatch: INTEGER + BOOLEAN
 
 
 ### Strings
-A string literal in Monkey is enclosed in double quotes:  
+A string literal in Selenite is enclosed in double quotes:\
 `"Hello World!"`
 
 A string is text between double quotes, e.g. "Hello".  
@@ -235,7 +235,7 @@ The evaluator also adds `+` concatenation:
 Strings now behave as first-class data values.
 
 ### Built-in functions
-To make Monkey more practical, Go functions are exposed as built-ins.  
+To make Selenite more practical, Go functions are exposed as built-ins.\
 Each built-in is represented by:
 ```go
 type Builtin struct { Fn func(args ...Object) Object }
@@ -247,10 +247,10 @@ len([1,2,3]) → 3
 ```
 
 `len` checks its argument’s type and returns an integer.  
-If called incorrectly, it produces a Monkey error object.
+If called incorrectly, it produces a Selenite error object.
 
 Other built-ins like `first`, `rest`, `push`, and `last` work on arrays.  
-Built-ins demonstrate how to connect host-language functions (Go) to interpreted functions (Monkey).
+Built-ins demonstrate how to connect host-language functions (Go) to interpreted functions (Selenite).
 
 ### Arrays
 Arrays are written with square brackets:  

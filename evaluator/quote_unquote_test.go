@@ -1,7 +1,7 @@
 package evaluator
 
 import (
-	"monkey/object"
+	"selenite/object"
 	"testing"
 )
 

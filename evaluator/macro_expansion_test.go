@@ -1,10 +1,10 @@
 package evaluator
 
 import (
-	"monkey/ast"
-	"monkey/lexer"
-	"monkey/object"
-	"monkey/parser"
+	"selenite/ast"
+	"selenite/lexer"
+	"selenite/object"
+	"selenite/parser"
 	"testing"
 )
 

@@ -1,9 +1,9 @@
 package evaluator
 
 import (
-	"monkey/lexer"
-	"monkey/object"
-	"monkey/parser"
+	"selenite/lexer"
+	"selenite/object"
+	"selenite/parser"
 	"testing"
 )
 
@@ -208,7 +208,7 @@ return 1;
 			"unknown operator: STRING - STRING",
 		},
 		{
-			`{"name": "Monkey"}[fn(x) { x }];`,
+			`{"name": "Selenite"}[fn(x) { x }];`,
 			"unusable as hash key: FUNCTION",
 		},
 	}
