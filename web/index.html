@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>go-interpreter · Selenite</title>
-<meta name="description" content="Selenite is a small language based on Monkey, with an interpreter written from scratch in Go. Try it in your browser.">
+<meta name="description" content="Selenite is a small language with an interpreter written from scratch in Go. Try it in your browser.">
 <meta name="theme-color" content="#111c3a">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon.ico" sizes="48x48">
@@ -88,8 +88,14 @@ a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid 
     radial-gradient(circle at 68% 60%, rgba(110,120,150,.16) 0 30px, transparent 31px),
     radial-gradient(circle at 46% 76%, rgba(110,120,150,.15) 0 14px, transparent 15px),
     radial-gradient(circle at 40% 32%, #fcfaf2 0%, #e6e3d6 55%, #aab0c2 100%);
-  box-shadow: 0 0 90px 10px rgba(205,222,255,.28), inset 36px -14px 70px rgba(52,68,120,.55);
+  box-shadow: 0 0 90px 10px rgba(205,222,255,.28), inset 0 0 35px rgba(52,68,120,.2);
   pointer-events: none;
+}
+.moon-phase { position: absolute; inset: 0; width: 100%; height: 100%; }
+.moon-phase path { fill: #24345c; opacity: .84; }
+.moon-loading {
+  position: absolute; z-index: 1; top: 310px; right: 116px;
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
 }
 .cloud { position: absolute; border-radius: 50%; background: rgba(120,142,196,.32); filter: blur(13px); pointer-events: none; }
 .cloud.a { right: 120px; top: 190px; width: 360px; height: 46px; }
@@ -151,13 +157,22 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
 .prompt { color: var(--accent); }
 .a { color: #f3f6fc; }
 .a.err { color: var(--err); }
-.form { display: flex; align-items: center; gap: 10px; padding: 6px 24px 18px; font-family: var(--mono); font-size: 17px; }
-.form input {
-  flex: 1; min-width: 0; font: inherit; color: var(--ink-strong); background: transparent; border: 0; border-bottom: 1px solid #34487a;
-  padding: 10px 0; border-radius: 0;
+.form { display: flex; align-items: flex-start; gap: 10px; padding: 6px 24px 8px; font-family: var(--mono); font-size: 17px; }
+.form .prompt { padding-top: 10px; line-height: 1.5; }
+.form textarea {
+  display: block; flex: 1; min-width: 0; font: inherit; line-height: 1.5; color: var(--ink-strong); background: transparent;
+  border: 0; border-bottom: 1px solid #34487a; padding: 10px 0; border-radius: 0; resize: none; overflow-y: auto; max-height: 240px;
 }
-.form input::placeholder { color: var(--muted); opacity: 1; }
-.form input:disabled { opacity: .6; }
+.form textarea:focus-visible { outline: none; border-bottom-color: var(--accent); box-shadow: 0 1px 0 var(--accent); }
+.form textarea::placeholder { color: var(--muted); opacity: 1; }
+.form textarea:disabled { opacity: .6; }
+.run {
+  font: 500 14px var(--mono); color: #14203f; background: #e4ebf8; border: 0; border-radius: 999px;
+  padding: 0 20px; min-height: 44px; cursor: pointer; flex: none;
+}
+.run:hover:not(:disabled) { background: #fff; }
+.run:disabled { opacity: .5; cursor: default; }
+.hint { margin: 0; padding: 0 24px 16px; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
 .examples { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; padding: 0 24px 24px; font-family: var(--mono); font-size: 13.5px; color: var(--muted); }
 .examples button {
   font: inherit; color: var(--ink); background: rgba(255,255,255,.04); border: 1px solid #34487a; border-radius: 999px;
@@ -168,10 +183,17 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* phases */
-.phases { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 28px; margin-top: 10px; }
-.phase { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.phases { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-top: 10px; }
+.phase {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 14px; min-width: 0; text-align: left;
+  font: inherit; color: inherit; background: transparent; border: 1px solid transparent; border-radius: 16px;
+  padding: 16px; cursor: pointer;
+}
+.phase:hover { background: rgba(255,255,255,.03); }
+.phase[aria-pressed="true"] { background: rgba(255,255,255,.05); border-color: #3a4e84; }
 /* Real phases: the lit side is on the right (a waxing moon). The curved edge between light and dark is half an ellipse. */
 .disc {
+  display: block;
   --lit: #e9e6da;
   --dark: #16244a;
   --craters:
@@ -204,7 +226,53 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
   border-color: var(--lit); box-shadow: 0 0 36px rgba(205, 222, 255, .45), inset 0 0 8px rgba(120, 130, 160, .3);
 }
 .phase .name { font-family: var(--mono); font-size: 17px; font-weight: 500; color: var(--ink-strong); }
-.phase p { margin: 0; font-size: 15px; line-height: 1.6; color: #a9b8d8; }
+.phase .desc { font-size: 15px; line-height: 1.6; color: #a9b8d8; }
+
+/* what a phase made of your last line */
+.inspector {
+  margin-top: 8px; background: var(--panel); border: 1px solid #2f4272; border-radius: 16px;
+  padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 14px; min-height: 190px;
+}
+.insp-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.insp-title { font-size: 18px; font-weight: 500; color: var(--ink-strong); }
+.insp-line code { font-family: var(--mono); color: var(--ink); overflow-wrap: anywhere; }
+.insp-note { margin: 0; font-size: 16px; line-height: 1.6; color: var(--ink-soft); max-width: 640px; }
+.insp-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.tokens { display: flex; flex-wrap: wrap; gap: 10px; }
+.tok {
+  display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border: 1px solid #34487a; border-radius: 10px;
+  background: rgba(255,255,255,.04); font-family: var(--mono); font-size: 15px; color: #f3f6fc; white-space: pre;
+}
+.tok small { font-size: 11px; letter-spacing: .06em; color: var(--muted); }
+.insp-pre {
+  margin: 0; padding: 14px 16px; background: rgba(8,14,36,.4); border-radius: 10px; overflow-x: auto;
+  font-family: var(--mono); font-size: 15px; line-height: 1.7; color: #e3eaf8; white-space: pre;
+}
+.insp-big { font-family: var(--mono); font-size: 28px; color: #f3f6fc; overflow-wrap: anywhere; }
+.insp-big.err { color: var(--err); }
+
+/* example programs */
+.programs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 470px), 1fr)); gap: 20px; }
+.program:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.program {
+  background-color: rgba(255,255,255,.035); border: 1px solid var(--line); border-radius: 16px;
+  padding: 22px; display: flex; flex-direction: column; gap: 12px; min-width: 0;
+}
+.program h3 { margin: 0; font-weight: 400; font-size: 22px; letter-spacing: -.01em; color: var(--ink-strong); }
+.program p { margin: 0; font-size: 15px; line-height: 1.6; color: #a9b8d8; }
+.program pre {
+  flex: 1; margin: 0; padding: 14px 16px; background: rgba(8,14,36,.4); border-radius: 10px; overflow-x: auto;
+  font-family: var(--mono); font-size: 13.5px; line-height: 1.65; color: #e3eaf8;
+}
+.program-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn-sm {
+  font: 500 14px var(--mono); color: var(--ink); background: transparent; border: 1px solid #34487a; border-radius: 999px;
+  padding: 0 18px; min-height: 44px; cursor: pointer;
+}
+.btn-sm:hover:not(:disabled) { border-color: var(--accent); color: #fff; }
+.btn-sm.primary { background: #e4ebf8; border-color: #e4ebf8; color: #14203f; }
+.btn-sm.primary:hover:not(:disabled) { background: #fff; color: #14203f; }
+.btn-sm:disabled { opacity: .5; cursor: default; }
 
 /* feature cards */
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 20px; }
@@ -231,12 +299,19 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
   .wrap { gap: 52px; }
   .hero { padding-top: 96px; min-height: 0; }
   .moon { width: 104px; height: 104px; right: 0; top: 0; }
+  .moon-loading { top: 110px; right: 0; }
   .halo { width: 360px; height: 360px; right: -20px; top: -110px; }
   .cloud { display: none; }
   .log { height: 260px; font-size: 15.5px; padding: 16px 16px 4px; }
   .form { padding: 6px 16px 16px; font-size: 16px; }
   .panel-head { padding: 16px 16px 12px; flex-direction: column; gap: 4px; }
   .examples { padding: 0 16px 20px; }
+  .hint { padding: 0 16px 14px; }
+  .inspector { padding: 18px 16px 20px; }
+  .phase { padding: 12px; }
+}
+@media (pointer: coarse) {
+  .hint-keys { display: none; }
 }
 @media (prefers-reduced-motion: no-preference) {
   .examples button { transition: border-color .15s ease; }
@@ -253,12 +328,15 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
 
   <section class="hero">
     <div class="halo" aria-hidden="true"></div>
-    <div class="moon" aria-hidden="true"></div>
+    <div class="moon" aria-hidden="true">
+      <svg class="moon-phase" viewBox="0 0 300 300" aria-hidden="true"><path id="moon-shadow"></path></svg>
+    </div>
     <div class="cloud a" aria-hidden="true"></div>
     <div class="cloud b" aria-hidden="true"></div>
+    <span class="moon-loading" id="moon-loading" role="status">waking the moon…</span>
     <span class="eyebrow">Project · Go</span>
     <h1>go-interpreter</h1>
-    <p class="lede">An interpreter for Selenite, a small language based on Monkey, written from scratch in Go. It reads your code, builds a tree from it, and runs it.</p>
+    <p class="lede">An interpreter for Selenite, a small language written from scratch in Go. It reads your code, builds a tree from it, and runs it.</p>
     <div class="facts">
       <a class="btn" href="https://github.com/WinterPhish/go-interpreter">View on GitHub</a>
       <span id="stars" title="Updated automatically from GitHub">3 stars</span>
@@ -277,8 +355,10 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
       <form class="form" id="form" autocomplete="off">
         <label class="sr-only" for="line">Selenite code</label>
         <span class="prompt" aria-hidden="true">&gt;&gt;</span>
-        <input id="line" type="text" inputmode="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type a line and press enter" disabled>
+        <textarea id="line" rows="1" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type some code" disabled></textarea>
+        <button type="submit" class="run" id="run" disabled>Run</button>
       </form>
+      <p class="hint"><span class="hint-keys">Enter runs · Shift+Enter adds a line · </span>↑ ↓ bring back earlier lines</p>
       <div class="examples">
         <span>Examples</span>
         <button type="button" data-code="let add = fn(a, b) { a + b; }; add(2, 3)" disabled>let add = fn(a, b) { a + b; }; add(2, 3)</button>
@@ -289,15 +369,89 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
     <noscript><p>The live interpreter needs JavaScript and WebAssembly.</p></noscript>
   </section>
 
+  <section class="section" aria-labelledby="programs">
+    <h2 id="programs">Example programs</h2>
+    <p>Run one as it is, or load it into the editor above and change it first.</p>
+    <div class="programs">
+      <article class="program">
+        <h3>Fibonacci</h3>
+        <p>A function that calls itself to count up the sequence.</p>
+<pre><code>let fibonacci = fn(x) {
+  if (x &lt; 2) {
+    return x;
+  }
+  fibonacci(x - 1) + fibonacci(x - 2);
+};
+fibonacci(15);</code></pre>
+        <div class="program-actions"><button type="button" class="btn-sm" data-act="load" disabled>Load into editor</button><button type="button" class="btn-sm primary" data-act="run" disabled>Run it</button></div>
+      </article>
+      <article class="program">
+        <h3>Closures</h3>
+        <p>A function that builds another function and keeps hold of its own variable.</p>
+<pre><code>let newAdder = fn(x) {
+  fn(y) { x + y };
+};
+let addTwo = newAdder(2);
+addTwo(3);</code></pre>
+        <div class="program-actions"><button type="button" class="btn-sm" data-act="load" disabled>Load into editor</button><button type="button" class="btn-sm primary" data-act="run" disabled>Run it</button></div>
+      </article>
+      <article class="program">
+        <h3>Map</h3>
+        <p>Apply a function to every item of an array, using only the built-ins.</p>
+<pre><code>let map = fn(arr, f) {
+  let iter = fn(arr, accumulated) {
+    if (len(arr) == 0) {
+      accumulated
+    } else {
+      iter(rest(arr), push(accumulated, f(first(arr))));
+    }
+  };
+  iter(arr, []);
+};
+let double = fn(x) { x * 2 };
+map([1, 2, 3, 4], double);</code></pre>
+        <div class="program-actions"><button type="button" class="btn-sm" data-act="load" disabled>Load into editor</button><button type="button" class="btn-sm primary" data-act="run" disabled>Run it</button></div>
+      </article>
+      <article class="program">
+        <h3>Hashes</h3>
+        <p>Look up a value by its key, inside an array of hashes.</p>
+<pre><code>let people = [
+  {"name": "Alice", "age": 24},
+  {"name": "Anna", "age": 28}
+];
+people[0]["name"];</code></pre>
+        <div class="program-actions"><button type="button" class="btn-sm" data-act="load" disabled>Load into editor</button><button type="button" class="btn-sm primary" data-act="run" disabled>Run it</button></div>
+      </article>
+      <article class="program">
+        <h3>A macro</h3>
+        <p>Code that rewrites code before it runs. This one swaps the two branches of an if.</p>
+<pre><code>let unless = macro(condition, consequence, alternative) {
+  quote(if (!(unquote(condition))) {
+    unquote(consequence);
+  } else {
+    unquote(alternative);
+  });
+};
+unless(10 &gt; 5, "not greater", "greater");</code></pre>
+        <div class="program-actions"><button type="button" class="btn-sm" data-act="load" disabled>Load into editor</button><button type="button" class="btn-sm primary" data-act="run" disabled>Run it</button></div>
+      </article>
+    </div>
+  </section>
+
   <section class="section" aria-labelledby="phases">
     <h2 id="phases">Five phases from text to answer</h2>
-    <p>Each stage is its own Go package, and each one gives the next a fuller picture. The moon fills as the program takes shape.</p>
-    <div class="phases">
-      <div class="phase"><div class="disc new" aria-hidden="true"></div><span class="name">lexer</span><p>Turns source into tokens: identifiers, keywords, operators, literals and delimiters.</p></div>
-      <div class="phase"><div class="disc crescent" aria-hidden="true"></div><span class="name">parser</span><p>A hand-written Pratt parser. It reads tokens and respects operator precedence.</p></div>
-      <div class="phase"><div class="disc quarter" aria-hidden="true"></div><span class="name">ast</span><p>The tree the parser builds. Every statement and expression becomes a node.</p></div>
-      <div class="phase"><div class="disc gibbous" aria-hidden="true"></div><span class="name">evaluator</span><p>Walks the tree and runs it: arithmetic, if expressions, closures, return and errors.</p></div>
-      <div class="phase"><div class="disc full" aria-hidden="true"></div><span class="name">object</span><p>The values the language holds: integers, booleans, null, strings, arrays and hashes.</p></div>
+    <p>Each stage is its own Go package, and each one gives the next a fuller picture. The moon fills as the program takes shape. Pick a phase to see what it made of the last line you ran.</p>
+    <div class="phases" role="group" aria-label="Pick a phase">
+      <button type="button" class="phase" data-phase="lexer" aria-pressed="true"><span class="disc new" aria-hidden="true"></span><span class="name">lexer</span><span class="desc">Turns source into tokens: identifiers, keywords, operators, literals and delimiters.</span></button>
+      <button type="button" class="phase" data-phase="parser" aria-pressed="false"><span class="disc crescent" aria-hidden="true"></span><span class="name">parser</span><span class="desc">A hand-written Pratt parser. It reads tokens and respects operator precedence.</span></button>
+      <button type="button" class="phase" data-phase="ast" aria-pressed="false"><span class="disc quarter" aria-hidden="true"></span><span class="name">ast</span><span class="desc">The tree the parser builds. Every statement and expression becomes a node.</span></button>
+      <button type="button" class="phase" data-phase="evaluator" aria-pressed="false"><span class="disc gibbous" aria-hidden="true"></span><span class="name">evaluator</span><span class="desc">Walks the tree and runs it: arithmetic, if expressions, closures, return and errors.</span></button>
+      <button type="button" class="phase" data-phase="object" aria-pressed="false"><span class="disc full" aria-hidden="true"></span><span class="name">object</span><span class="desc">The values the language holds: integers, booleans, null, strings, arrays and hashes.</span></button>
+    </div>
+    <div class="inspector" aria-live="polite">
+      <div class="insp-head"><span class="insp-title" id="insp-title">lexer</span><span class="insp-line" id="insp-for" hidden>for <code id="insp-line"></code></span></div>
+      <p class="insp-note" id="insp-note"></p>
+      <div class="insp-body" id="insp-body"></div>
     </div>
   </section>
 
@@ -328,9 +482,55 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
   var form = document.getElementById('form');
   var input = document.getElementById('line');
   var status = document.getElementById('status');
+  var moonShadow = document.getElementById('moon-shadow');
+  var moonLoading = document.getElementById('moon-loading');
   var examples = document.querySelectorAll('.examples button');
+  var runButton = document.getElementById('run');
+  var programButtons = document.querySelectorAll('.program button');
+  var phaseButtons = document.querySelectorAll('.phase');
+  var inspTitle = document.getElementById('insp-title');
+  var inspFor = document.getElementById('insp-for');
+  var inspLine = document.getElementById('insp-line');
+  var inspNote = document.getElementById('insp-note');
+  var inspBody = document.getElementById('insp-body');
+  var coarsePointer = window.matchMedia('(pointer: coarse)');
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var history = [];
   var position = 0;
+  var last = null;          // the last line run, and what every phase made of it
+  var selectedPhase = 'lexer';
+
+  function updateMoonPhase() {
+    var cycle = 29.530588853 * 24 * 60 * 60 * 1000;
+    var knownNewMoon = Date.UTC(2000, 0, 6, 18, 14);
+    var age = ((Date.now() - knownNewMoon) % cycle + cycle) % cycle;
+    var phase = age / cycle;
+    var angle = phase * Math.PI * 2;
+    var sine = Math.sin(angle);
+    var cosine = Math.cos(angle);
+    var center = 150;
+    var radius = 149;
+
+    if (Math.abs(sine) < 1e-8 && cosine < 0) {
+      moonShadow.setAttribute('d', '');
+      return;
+    }
+
+    var terminator = radius * cosine * (sine < 0 ? -1 : 1);
+    var sideSweep = sine < 0 ? 1 : 0;
+    var top = center - radius;
+    var bottom = center + radius;
+    var d = 'M ' + center + ' ' + top +
+      ' A ' + radius + ' ' + radius + ' 0 0 ' + sideSweep + ' ' + center + ' ' + bottom +
+      ' C ' + (center + terminator * .5523) + ' ' + bottom + ' ' +
+      (center + terminator) + ' ' + (center + radius * .5523) + ' ' +
+      (center + terminator) + ' ' + center +
+      ' C ' + (center + terminator) + ' ' + (center - radius * .5523) + ' ' +
+      (center + terminator * .5523) + ' ' + top + ' ' + center + ' ' + top + ' Z';
+    moonShadow.setAttribute('d', d);
+  }
+  updateMoonPhase();
+  window.setInterval(updateMoonPhase, 60 * 60 * 1000);
 
   // Shows one line you typed and the answer under it.
   function show(line, output, isError) {
@@ -343,7 +543,8 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
     prompt.className = 'prompt';
     prompt.textContent = '>>';
     q.appendChild(prompt);
-    q.appendChild(document.createTextNode(' ' + line));
+    // Lines after the first are indented so they sit under the code, not under the prompt.
+    q.appendChild(document.createTextNode(' ' + line.split('\n').join('\n   ')));
     entry.appendChild(q);
 
     if (output !== '') {
@@ -363,10 +564,12 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
     history.push(line);
     position = history.length;
 
-    var output, isError = false;
+    var ex, output, isError = false;
     try {
-      output = window.seleniteRun(line);
+      ex = explain(line);
+      output = ex.result;
       isError = output.indexOf('ERROR') === 0 || output.indexOf('Woops') === 0;
+      last = { line: line, ex: ex };
     } catch (e) {
       // If Go crashes, the WebAssembly program exits and cannot be called again.
       output = 'The interpreter stopped. Reload the page to start again.';
@@ -375,26 +578,59 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
       status.textContent = 'stopped';
     }
     show(line, output, isError);
+    renderInspector();
+  }
+
+  // Asks the Go code what every phase made of the line. An older selenite.wasm only
+  // knows how to run it, so fall back to that and say what is missing.
+  function explain(line) {
+    if (typeof window.seleniteExplain === 'function') {
+      var r = window.seleniteExplain(line);
+      return { tokens: r.tokens, grouped: r.grouped, tree: r.tree, result: r.result, type: r.type, failed: r.failed, full: true };
+    }
+    return { tokens: '', grouped: '', tree: '', result: window.seleniteRun(line), type: '', failed: false, full: false };
   }
 
   function setEnabled(on) {
     input.disabled = !on;
+    runButton.disabled = !on;
     examples.forEach(function (b) { b.disabled = !on; });
+    programButtons.forEach(function (b) { b.disabled = !on; });
   }
+
+  // The editor grows with what you type, up to a limit.
+  function autosize() {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 240) + 'px';
+  }
+  input.addEventListener('input', autosize);
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     execute(input.value);
     input.value = '';
+    autosize();
   });
 
-  // Up and down arrows walk through earlier lines.
+  // Enter runs the code and Shift+Enter adds a line. On phones Enter always adds a line, and Run is the button.
   input.addEventListener('keydown', function (e) {
-    if (e.key === 'ArrowUp' && position > 0) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !coarsePointer.matches) {
+      e.preventDefault();
+      if (form.requestSubmit) form.requestSubmit();
+      else form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      return;
+    }
+    // Up and down walk through earlier code. In a multi-line editor they only do it
+    // at the very start or end, so they can still move the cursor between lines.
+    var multiline = input.value.indexOf('\n') !== -1;
+    var atStart = input.selectionStart === 0 && input.selectionEnd === 0;
+    var atEnd = input.selectionStart === input.value.length;
+    if (e.key === 'ArrowUp' && position > 0 && (!multiline || atStart)) {
       e.preventDefault();
       position--;
       input.value = history[position];
-    } else if (e.key === 'ArrowDown') {
+      autosize();
+    } else if (e.key === 'ArrowDown' && (!multiline || atEnd)) {
       e.preventDefault();
       if (position < history.length - 1) {
         position++;
@@ -403,6 +639,7 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
         position = history.length;
         input.value = '';
       }
+      autosize();
     }
   });
 
@@ -416,6 +653,114 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
   document.getElementById('clear').addEventListener('click', function () {
     log.textContent = '';
   });
+
+  // Example programs: run the whole program, or put it in the editor to change first.
+  function goToPanel() {
+    document.getElementById('try').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  }
+  document.querySelectorAll('.program').forEach(function (card) {
+    var code = card.querySelector('code').textContent.replace(/\n$/, '');
+    card.querySelector('[data-act="load"]').addEventListener('click', function () {
+      input.value = code;
+      autosize();
+      goToPanel();
+      input.focus({ preventScroll: true });
+    });
+    card.querySelector('[data-act="run"]').addEventListener('click', function () {
+      execute(code);
+      goToPanel();
+    });
+  });
+
+  // The phase viewer: each phase shows what it made of the last line you ran.
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function oneLine(code) {
+    var flat = code.replace(/\s*\n\s*/g, ' ');
+    return flat.length > 80 ? flat.slice(0, 80) + '…' : flat;
+  }
+
+  function renderInspector() {
+    inspTitle.textContent = selectedPhase;
+    inspBody.textContent = '';
+
+    if (!last) {
+      inspFor.hidden = true;
+      inspNote.textContent = 'Run a line above, and each phase will show what it made of it.';
+      return;
+    }
+    inspFor.hidden = false;
+    inspLine.textContent = oneLine(last.line);
+    var ex = last.ex;
+
+    if (!ex.full) {
+      inspNote.textContent = 'This page is using an older selenite.wasm. Rebuild it with the new Go code to see what each phase makes.';
+      return;
+    }
+
+    if (selectedPhase === 'lexer') {
+      inspNote.textContent = 'The lexer cut your line into tokens. Each one has a type and the text it came from.';
+      var tokens = el('div', 'tokens');
+      (ex.tokens ? ex.tokens.split('\n') : []).forEach(function (row) {
+        var tab = row.indexOf('\t');
+        var tok = el('span', 'tok');
+        tok.appendChild(el('small', null, tab < 0 ? row : row.slice(0, tab)));
+        tok.appendChild(el('span', null, tab < 0 ? '' : row.slice(tab + 1)));
+        tokens.appendChild(tok);
+      });
+      inspBody.appendChild(tokens);
+      return;
+    }
+
+    if (ex.failed) {
+      if (selectedPhase === 'parser') {
+        inspNote.textContent = 'The parser could not build a tree from this line, so it stopped here.';
+        inspBody.appendChild(el('pre', 'insp-pre', ex.result.replace(/\s+$/, '')));
+      } else {
+        inspNote.textContent = 'This phase never ran, because the parser stopped first.';
+      }
+      return;
+    }
+
+    if (selectedPhase === 'parser') {
+      inspNote.textContent = 'The parser grouped the tokens. Parentheses show what binds tighter: the inner groups are worked out first.';
+      inspBody.appendChild(el('pre', 'insp-pre', ex.grouped.replace(/\s+$/, '')));
+    } else if (selectedPhase === 'ast') {
+      inspNote.textContent = 'Every statement and expression became a node. Children are indented under their parent.';
+      inspBody.appendChild(el('pre', 'insp-pre', ex.tree.replace(/\s+$/, '')));
+    } else if (selectedPhase === 'evaluator') {
+      var isErr = ex.result.indexOf('ERROR') === 0;
+      if (ex.result === '') {
+        inspNote.textContent = 'The evaluator ran the tree. A statement like let stores a value but gives nothing back.';
+      } else {
+        inspNote.textContent = 'The evaluator walked the tree from the bottom up, and this is what it came to.';
+        inspBody.appendChild(el('div', 'insp-big' + (isErr ? ' err' : ''), ex.result));
+      }
+    } else if (selectedPhase === 'object') {
+      if (ex.type === '') {
+        inspNote.textContent = 'There is no value here, so there is no object to look at.';
+      } else {
+        inspNote.textContent = 'Every result is an object that knows its own type.';
+        inspBody.appendChild(el('div', 'insp-big', ex.type));
+      }
+    }
+  }
+
+  phaseButtons.forEach(function (b) {
+    b.addEventListener('click', function () {
+      selectedPhase = b.getAttribute('data-phase');
+      phaseButtons.forEach(function (other) {
+        other.setAttribute('aria-pressed', String(other === b));
+      });
+      renderInspector();
+    });
+  });
+  renderInspector();
 
   // Downloads and starts the WebAssembly program.
   async function start() {
@@ -431,12 +776,14 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
     go.run(result.instance); // keeps running, so we do not wait for it
     setEnabled(true);
     status.textContent = 'ready';
+    moonLoading.hidden = true;
     execute('let add = fn(a, b) { a + b; };');
     execute('add(2, 3)');
   }
 
   start().catch(function () {
     status.textContent = 'could not load';
+    moonLoading.hidden = true;
     show('', 'The interpreter could not be loaded. Check that selenite.wasm and wasm_exec.js are next to this page.', true);
   });
 })();
