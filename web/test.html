@@ -1,0 +1,21 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Selenite test</title>
+<script src="wasm_exec.js"></script>
+
+<input id="line" size="50" value="let add = fn(a, b) { a + b; };">
+<button id="run">Run</button>
+<pre id="out"></pre>
+
+<script>
+  const go = new Go();
+  WebAssembly.instantiateStreaming(fetch("selenite.wasm"), go.importObject)
+    .then((result) => {
+      go.run(result.instance);
+      document.getElementById("run").onclick = () => {
+        const line = document.getElementById("line").value;
+        document.getElementById("out").textContent +=
+          ">> " + line + "\n" + seleniteRun(line) + "\n";
+      };
+    });
+</script>
