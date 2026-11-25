@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>go-interpreter · Selenite</title>
-<meta name="description" content="Selenite is a small language with an interpreter written from scratch in Go. Try it in your browser.">
+<meta name="description" content="Selenite is a small language based on Monkey, with an interpreter written from scratch in Go. Try it in your browser.">
 <meta name="theme-color" content="#111c3a">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon.ico" sizes="48x48">
@@ -258,11 +258,11 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
     <div class="cloud b" aria-hidden="true"></div>
     <span class="eyebrow">Project · Go</span>
     <h1>go-interpreter</h1>
-    <p class="lede">An interpreter for Selenite, a small language written from scratch in Go. It reads your code, builds a tree from it, and runs it.</p>
+    <p class="lede">An interpreter for Selenite, a small language based on Monkey, written from scratch in Go. It reads your code, builds a tree from it, and runs it.</p>
     <div class="facts">
       <a class="btn" href="https://github.com/WinterPhish/go-interpreter">View on GitHub</a>
-      <span>3 stars</span>
-      <span>22 commits</span>
+      <span id="stars" title="Updated automatically from GitHub">3 stars</span>
+      <span id="commits" title="Updated automatically from GitHub">22 commits</span>
     </div>
   </section>
 
@@ -527,6 +527,59 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
   } else {
     requestAnimationFrame(function (now) { last = now; frame(now); });
   }
+})();
+</script>
+<script>
+// Keeps the star and commit counts up to date from GitHub.
+// The numbers already in the page are the fallback if GitHub cannot be reached.
+(function () {
+  var API = 'https://api.github.com/repos/WinterPhish/go-interpreter';
+  var CACHE_KEY = 'go-interpreter-stats';
+  var MAX_AGE = 60 * 60 * 1000; // ask GitHub at most once an hour per visitor
+  var starsEl = document.getElementById('stars');
+  var commitsEl = document.getElementById('commits');
+
+  function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
+
+  function render(stats) {
+    starsEl.textContent = plural(stats.stars, 'star');
+    commitsEl.textContent = plural(stats.commits, 'commit');
+  }
+
+  function readCache() {
+    try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch (e) { return null; }
+  }
+
+  function writeCache(stats) {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ time: Date.now(), stars: stats.stars, commits: stats.commits }));
+    } catch (e) { /* storage can be blocked; the page works without it */ }
+  }
+
+  async function fetchStats() {
+    var repoResponse = await fetch(API);
+    if (!repoResponse.ok) throw new Error('repo request failed');
+    var repo = await repoResponse.json();
+
+    // GitHub has no commit counter. Ask for one commit per page, then read the
+    // number of the last page from the Link header: that number is the commit count.
+    var commitsResponse = await fetch(API + '/commits?per_page=1');
+    if (!commitsResponse.ok) throw new Error('commits request failed');
+    var link = commitsResponse.headers.get('Link');
+    var last = link && link.match(/[?&]page=(\d+)>; rel="last"/);
+    var commits = last ? parseInt(last[1], 10) : (await commitsResponse.json()).length;
+
+    return { stars: repo.stargazers_count, commits: commits };
+  }
+
+  var cached = readCache();
+  if (cached) render(cached);
+  if (cached && Date.now() - cached.time < MAX_AGE) return;
+
+  fetchStats().then(function (stats) {
+    render(stats);
+    writeCache(stats);
+  }).catch(function () { /* keep whatever is already shown */ });
 })();
 </script>
 </body>
