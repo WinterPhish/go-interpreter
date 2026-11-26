@@ -34,6 +34,8 @@
   --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
 * { box-sizing: border-box; }
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
 html { color-scheme: dark; }
 body {
   margin: 0;
@@ -88,14 +90,8 @@ a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid 
     radial-gradient(circle at 68% 60%, rgba(110,120,150,.16) 0 30px, transparent 31px),
     radial-gradient(circle at 46% 76%, rgba(110,120,150,.15) 0 14px, transparent 15px),
     radial-gradient(circle at 40% 32%, #fcfaf2 0%, #e6e3d6 55%, #aab0c2 100%);
-  box-shadow: 0 0 90px 10px rgba(205,222,255,.28), inset 0 0 35px rgba(52,68,120,.2);
+  box-shadow: 0 0 90px 10px rgba(205,222,255,.28), inset 36px -14px 70px rgba(52,68,120,.55);
   pointer-events: none;
-}
-.moon-phase { position: absolute; inset: 0; width: 100%; height: 100%; }
-.moon-phase path { fill: #24345c; opacity: .84; }
-.moon-loading {
-  position: absolute; z-index: 1; top: 310px; right: 116px;
-  font-family: var(--mono); font-size: 11px; color: var(--muted);
 }
 .cloud { position: absolute; border-radius: 50%; background: rgba(120,142,196,.32); filter: blur(13px); pointer-events: none; }
 .cloud.a { right: 120px; top: 190px; width: 360px; height: 46px; }
@@ -173,6 +169,17 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
 .run:hover:not(:disabled) { background: #fff; }
 .run:disabled { opacity: .5; cursor: default; }
 .hint { margin: 0; padding: 0 24px 16px; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+
+/* shown in place of the log while selenite.wasm downloads */
+.loader {
+  display: none; height: 300px; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 24px; text-align: center;
+}
+.panel[data-loading="true"] .loader { display: flex; }
+.panel[data-loading="true"] .log { display: none; }
+.loader .disc { width: 64px; height: 64px; box-shadow: 0 0 40px rgba(205, 222, 255, .25), inset 0 0 8px rgba(8, 14, 36, .35); }
+.loader .msg { font-weight: 300; font-size: 22px; color: var(--ink-strong); }
+.loader .meter { font-family: var(--mono); font-size: 13px; color: var(--muted); min-height: 1.4em; }
 .examples { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; padding: 0 24px 24px; font-family: var(--mono); font-size: 13.5px; color: var(--muted); }
 .examples button {
   font: inherit; color: var(--ink); background: rgba(255,255,255,.04); border: 1px solid #34487a; border-radius: 999px;
@@ -228,6 +235,36 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
 .phase .name { font-family: var(--mono); font-size: 17px; font-weight: 500; color: var(--ink-strong); }
 .phase .desc { font-size: 15px; line-height: 1.6; color: #a9b8d8; }
 
+
+/* workbench: programs on the side, console and phases together */
+.bench { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
+.bench-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.bench-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.side-title, .phases-label { font-family: var(--mono); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.picker { display: flex; flex-wrap: wrap; gap: 8px; }
+.picker button {
+  font: 500 14px var(--mono); color: var(--ink); background: transparent; border: 1px solid #34487a; border-radius: 999px;
+  padding: 0 16px; min-height: 44px; cursor: pointer;
+}
+.picker button:hover { border-color: var(--accent); color: #fff; }
+.picker button[aria-pressed="true"] { background: rgba(255,255,255,.08); border-color: var(--accent); color: #fff; }
+.programs { display: block; }
+.programs[data-tabs] .program h3 { display: none; }
+.program[hidden] { display: none; }
+.bench .log { height: 230px; }
+.bench-side .examples { padding: 0; }
+.bench .phases { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 0; }
+.bench .phase { align-items: center; gap: 8px; padding: 10px 6px; }
+.bench .phase .desc { display: none; }
+.bench .phase .name { font-size: 14px; }
+.bench .disc { width: 44px; height: 44px; }
+.bench .inspector { margin-top: 0; min-height: 0; padding: 18px 20px 20px; }
+.insp-desc { margin: 0; font-size: 15px; line-height: 1.6; color: #a9b8d8; max-width: 640px; }
+@media (min-width: 1040px) {
+  .bench { grid-template-columns: 430px minmax(0, 1fr); gap: 28px; }
+  .bench-side { position: sticky; top: 16px; }
+}
+
 /* what a phase made of your last line */
 .inspector {
   margin-top: 8px; background: var(--panel); border: 1px solid #2f4272; border-radius: 16px;
@@ -245,15 +282,13 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
 }
 .tok small { font-size: 11px; letter-spacing: .06em; color: var(--muted); }
 .insp-pre {
-  margin: 0; padding: 14px 16px; background: rgba(8,14,36,.4); border-radius: 10px; overflow-x: auto;
-  font-family: var(--mono); font-size: 15px; line-height: 1.7; color: #e3eaf8; white-space: pre;
+  margin: 0; padding: 14px 16px; background: rgba(8,14,36,.4); border-radius: 10px;
+  font-family: var(--mono); font-size: 15px; line-height: 1.7; color: #e3eaf8; white-space: pre-wrap; overflow-wrap: anywhere;
 }
 .insp-big { font-family: var(--mono); font-size: 28px; color: #f3f6fc; overflow-wrap: anywhere; }
 .insp-big.err { color: var(--err); }
 
 /* example programs */
-.programs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 470px), 1fr)); gap: 20px; }
-.program:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .program {
   background-color: rgba(255,255,255,.035); border: 1px solid var(--line); border-radius: 16px;
   padding: 22px; display: flex; flex-direction: column; gap: 12px; min-width: 0;
@@ -299,7 +334,6 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
   .wrap { gap: 52px; }
   .hero { padding-top: 96px; min-height: 0; }
   .moon { width: 104px; height: 104px; right: 0; top: 0; }
-  .moon-loading { top: 110px; right: 0; }
   .halo { width: 360px; height: 360px; right: -20px; top: -110px; }
   .cloud { display: none; }
   .log { height: 260px; font-size: 15.5px; padding: 16px 16px 4px; }
@@ -307,8 +341,11 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
   .panel-head { padding: 16px 16px 12px; flex-direction: column; gap: 4px; }
   .examples { padding: 0 16px 20px; }
   .hint { padding: 0 16px 14px; }
-  .inspector { padding: 18px 16px 20px; }
-  .phase { padding: 12px; }
+  .loader { height: 260px; }
+  .inspector, .bench .inspector { padding: 16px 16px 18px; }
+  .bench .log { height: 240px; }
+  .bench .phase .name { font-size: 12.5px; }
+  .bench .disc { width: 36px; height: 36px; }
 }
 @media (pointer: coarse) {
   .hint-keys { display: none; }
@@ -328,12 +365,9 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
 
   <section class="hero">
     <div class="halo" aria-hidden="true"></div>
-    <div class="moon" aria-hidden="true">
-      <svg class="moon-phase" viewBox="0 0 300 300" aria-hidden="true"><path id="moon-shadow"></path></svg>
-    </div>
+    <div class="moon" aria-hidden="true"></div>
     <div class="cloud a" aria-hidden="true"></div>
     <div class="cloud b" aria-hidden="true"></div>
-    <span class="moon-loading" id="moon-loading" role="status">waking the moon…</span>
     <span class="eyebrow">Project · Go</span>
     <h1>go-interpreter</h1>
     <p class="lede">An interpreter for Selenite, a small language written from scratch in Go. It reads your code, builds a tree from it, and runs it.</p>
@@ -346,33 +380,12 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
 
   <section class="section" aria-labelledby="try">
     <h2 id="try">Try it</h2>
-    <div class="panel">
-      <div class="panel-head">
-        <span>selenite · live</span>
-        <span><span id="status">loading…</span> · <button type="button" id="clear">clear</button></span>
-      </div>
-      <div class="log" id="log" role="log" aria-live="polite" aria-label="Interpreter output"></div>
-      <form class="form" id="form" autocomplete="off">
-        <label class="sr-only" for="line">Selenite code</label>
-        <span class="prompt" aria-hidden="true">&gt;&gt;</span>
-        <textarea id="line" rows="1" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type some code" disabled></textarea>
-        <button type="submit" class="run" id="run" disabled>Run</button>
-      </form>
-      <p class="hint"><span class="hint-keys">Enter runs · Shift+Enter adds a line · </span>↑ ↓ bring back earlier lines</p>
-      <div class="examples">
-        <span>Examples</span>
-        <button type="button" data-code="let add = fn(a, b) { a + b; }; add(2, 3)" disabled>let add = fn(a, b) { a + b; }; add(2, 3)</button>
-        <button type="button" data-code="[1, 2, 3, 4]" disabled>[1, 2, 3, 4]</button>
-        <button type="button" data-code="quote(8 + unquote(4 + 4))" disabled>quote(8 + unquote(4 + 4))</button>
-      </div>
-    </div>
-    <noscript><p>The live interpreter needs JavaScript and WebAssembly.</p></noscript>
-  </section>
-
-  <section class="section" aria-labelledby="programs">
-    <h2 id="programs">Example programs</h2>
-    <p>Run one as it is, or load it into the editor above and change it first.</p>
-    <div class="programs">
+    <p>Pick a program, run it, then pick a phase to see what each stage of the interpreter made of it. Everything stays in view side by side.</p>
+    <div class="bench">
+      <div class="bench-side">
+        <div class="side-title" id="programs-title">Example programs</div>
+        <div class="picker" id="picker" role="group" aria-labelledby="programs-title"></div>
+    <div class="programs" id="programs">
       <article class="program">
         <h3>Fibonacci</h3>
         <p>A function that calls itself to count up the sequence.</p>
@@ -383,6 +396,19 @@ h2 { margin: 0; font-weight: 300; font-size: clamp(30px, 4.5vw, 40px); letter-sp
   fibonacci(x - 1) + fibonacci(x - 2);
 };
 fibonacci(15);</code></pre>
+        <div class="program-actions"><button type="button" class="btn-sm" data-act="load" disabled>Load into editor</button><button type="button" class="btn-sm primary" data-act="run" disabled>Run it</button></div>
+      </article>
+      <article class="program">
+        <h3>Factorial</h3>
+        <p>Recursively multiply a number by each whole number below it.</p>
+<pre><code>let factorial = fn(n) {
+  if (n == 0) {
+    1
+  } else {
+    n * factorial(n - 1)
+  }
+};
+factorial(6);</code></pre>
         <div class="program-actions"><button type="button" class="btn-sm" data-act="load" disabled>Load into editor</button><button type="button" class="btn-sm primary" data-act="run" disabled>Run it</button></div>
       </article>
       <article class="program">
@@ -413,6 +439,28 @@ map([1, 2, 3, 4], double);</code></pre>
         <div class="program-actions"><button type="button" class="btn-sm" data-act="load" disabled>Load into editor</button><button type="button" class="btn-sm primary" data-act="run" disabled>Run it</button></div>
       </article>
       <article class="program">
+        <h3>Filter</h3>
+        <p>Keep only the array items that pass a predicate function.</p>
+<pre><code>let filter = fn(arr, predicate) {
+  let iter = fn(arr, accumulated) {
+    if (len(arr) == 0) {
+      accumulated
+    } else {
+      let item = first(arr);
+      if (predicate(item)) {
+        iter(rest(arr), push(accumulated, item));
+      } else {
+        iter(rest(arr), accumulated);
+      };
+    }
+  };
+  iter(arr, []);
+};
+let greaterThanThree = fn(x) { x &gt; 3 };
+filter([1, 2, 3, 4, 5, 6], greaterThanThree);</code></pre>
+        <div class="program-actions"><button type="button" class="btn-sm" data-act="load" disabled>Load into editor</button><button type="button" class="btn-sm primary" data-act="run" disabled>Run it</button></div>
+      </article>
+      <article class="program">
         <h3>Hashes</h3>
         <p>Look up a value by its key, inside an array of hashes.</p>
 <pre><code>let people = [
@@ -436,12 +484,35 @@ unless(10 &gt; 5, "not greater", "greater");</code></pre>
         <div class="program-actions"><button type="button" class="btn-sm" data-act="load" disabled>Load into editor</button><button type="button" class="btn-sm primary" data-act="run" disabled>Run it</button></div>
       </article>
     </div>
-  </section>
-
-  <section class="section" aria-labelledby="phases">
-    <h2 id="phases">Five phases from text to answer</h2>
-    <p>Each stage is its own Go package, and each one gives the next a fuller picture. The moon fills as the program takes shape. Pick a phase to see what it made of the last line you ran.</p>
-    <div class="phases" role="group" aria-label="Pick a phase">
+      <div class="examples">
+        <span>Or a one-liner</span>
+        <button type="button" data-code="let add = fn(a, b) { a + b; }; add(2, 3)" disabled>let add = fn(a, b) { a + b; }; add(2, 3)</button>
+        <button type="button" data-code="[1, 2, 3, 4]" disabled>[1, 2, 3, 4]</button>
+        <button type="button" data-code="quote(8 + unquote(4 + 4))" disabled>quote(8 + unquote(4 + 4))</button>
+      </div>
+      </div>
+      <div class="bench-main">
+    <div class="panel">
+      <div class="panel-head">
+        <span>selenite · live</span>
+        <span><span id="status">loading…</span> · <button type="button" id="clear">clear</button></span>
+      </div>
+      <div class="loader" role="status">
+        <span class="disc new" id="loader-moon" aria-hidden="true"></span>
+        <span class="msg">Waking the interpreter</span>
+        <span class="meter" id="loader-meter" aria-hidden="true"></span>
+      </div>
+      <div class="log" id="log" role="log" aria-live="polite" aria-label="Interpreter output"></div>
+      <form class="form" id="form" autocomplete="off">
+        <label class="sr-only" for="line">Selenite code</label>
+        <span class="prompt" aria-hidden="true">&gt;&gt;</span>
+        <textarea id="line" rows="1" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="type some code" disabled></textarea>
+        <button type="submit" class="run" id="run" disabled>Run</button>
+      </form>
+      <p class="hint"><span class="hint-keys">Enter runs · Shift+Enter adds a line · </span>↑ ↓ bring back earlier lines</p>
+    </div>
+        <div class="phases-label" id="phases-label">The five phases</div>
+    <div class="phases" role="group" aria-labelledby="phases-label">
       <button type="button" class="phase" data-phase="lexer" aria-pressed="true"><span class="disc new" aria-hidden="true"></span><span class="name">lexer</span><span class="desc">Turns source into tokens: identifiers, keywords, operators, literals and delimiters.</span></button>
       <button type="button" class="phase" data-phase="parser" aria-pressed="false"><span class="disc crescent" aria-hidden="true"></span><span class="name">parser</span><span class="desc">A hand-written Pratt parser. It reads tokens and respects operator precedence.</span></button>
       <button type="button" class="phase" data-phase="ast" aria-pressed="false"><span class="disc quarter" aria-hidden="true"></span><span class="name">ast</span><span class="desc">The tree the parser builds. Every statement and expression becomes a node.</span></button>
@@ -450,9 +521,13 @@ unless(10 &gt; 5, "not greater", "greater");</code></pre>
     </div>
     <div class="inspector" aria-live="polite">
       <div class="insp-head"><span class="insp-title" id="insp-title">lexer</span><span class="insp-line" id="insp-for" hidden>for <code id="insp-line"></code></span></div>
+      <p class="insp-desc" id="insp-desc"></p>
       <p class="insp-note" id="insp-note"></p>
       <div class="insp-body" id="insp-body"></div>
     </div>
+      </div>
+    </div>
+    <noscript><p>The live interpreter needs JavaScript and WebAssembly.</p></noscript>
   </section>
 
   <section class="section" aria-labelledby="can">
@@ -482,8 +557,6 @@ unless(10 &gt; 5, "not greater", "greater");</code></pre>
   var form = document.getElementById('form');
   var input = document.getElementById('line');
   var status = document.getElementById('status');
-  var moonShadow = document.getElementById('moon-shadow');
-  var moonLoading = document.getElementById('moon-loading');
   var examples = document.querySelectorAll('.examples button');
   var runButton = document.getElementById('run');
   var programButtons = document.querySelectorAll('.program button');
@@ -492,6 +565,7 @@ unless(10 &gt; 5, "not greater", "greater");</code></pre>
   var inspFor = document.getElementById('insp-for');
   var inspLine = document.getElementById('insp-line');
   var inspNote = document.getElementById('insp-note');
+  var inspDesc = document.getElementById('insp-desc');
   var inspBody = document.getElementById('insp-body');
   var coarsePointer = window.matchMedia('(pointer: coarse)');
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -499,38 +573,6 @@ unless(10 &gt; 5, "not greater", "greater");</code></pre>
   var position = 0;
   var last = null;          // the last line run, and what every phase made of it
   var selectedPhase = 'lexer';
-
-  function updateMoonPhase() {
-    var cycle = 29.530588853 * 24 * 60 * 60 * 1000;
-    var knownNewMoon = Date.UTC(2000, 0, 6, 18, 14);
-    var age = ((Date.now() - knownNewMoon) % cycle + cycle) % cycle;
-    var phase = age / cycle;
-    var angle = phase * Math.PI * 2;
-    var sine = Math.sin(angle);
-    var cosine = Math.cos(angle);
-    var center = 150;
-    var radius = 149;
-
-    if (Math.abs(sine) < 1e-8 && cosine < 0) {
-      moonShadow.setAttribute('d', '');
-      return;
-    }
-
-    var terminator = radius * cosine * (sine < 0 ? -1 : 1);
-    var sideSweep = sine < 0 ? 1 : 0;
-    var top = center - radius;
-    var bottom = center + radius;
-    var d = 'M ' + center + ' ' + top +
-      ' A ' + radius + ' ' + radius + ' 0 0 ' + sideSweep + ' ' + center + ' ' + bottom +
-      ' C ' + (center + terminator * .5523) + ' ' + bottom + ' ' +
-      (center + terminator) + ' ' + (center + radius * .5523) + ' ' +
-      (center + terminator) + ' ' + center +
-      ' C ' + (center + terminator) + ' ' + (center - radius * .5523) + ' ' +
-      (center + terminator * .5523) + ' ' + top + ' ' + center + ' ' + top + ' Z';
-    moonShadow.setAttribute('d', d);
-  }
-  updateMoonPhase();
-  window.setInterval(updateMoonPhase, 60 * 60 * 1000);
 
   // Shows one line you typed and the answer under it.
   function show(line, output, isError) {
@@ -654,23 +696,40 @@ unless(10 &gt; 5, "not greater", "greater");</code></pre>
     log.textContent = '';
   });
 
-  // Example programs: run the whole program, or put it in the editor to change first.
-  function goToPanel() {
-    document.getElementById('try').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  // Example programs: one is shown at a time. Run it, or put it in the editor to change first.
+  // The console sits next to them on wide screens; on a narrow screen it scrolls into view if it is off screen.
+  function showPanel() {
+    var r = document.querySelector('.panel').getBoundingClientRect();
+    if (r.top < 0 || r.top > window.innerHeight * 0.45) {
+      window.scrollBy({ top: r.top - 12, behavior: reduceMotion ? 'auto' : 'smooth' });
+    }
   }
-  document.querySelectorAll('.program').forEach(function (card) {
+  var picker = document.getElementById('picker');
+  var programList = document.getElementById('programs');
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.program'));
+  programList.setAttribute('data-tabs', '');
+  function pickProgram(index) {
+    cards.forEach(function (card, i) { card.hidden = i !== index; });
+    Array.prototype.forEach.call(picker.children, function (b, i) { b.setAttribute('aria-pressed', String(i === index)); });
+  }
+  cards.forEach(function (card, i) {
+    var b = el('button', null, card.querySelector('h3').textContent);
+    b.type = 'button';
+    b.addEventListener('click', function () { pickProgram(i); });
+    picker.appendChild(b);
     var code = card.querySelector('code').textContent.replace(/\n$/, '');
     card.querySelector('[data-act="load"]').addEventListener('click', function () {
       input.value = code;
       autosize();
-      goToPanel();
+      showPanel();
       input.focus({ preventScroll: true });
     });
     card.querySelector('[data-act="run"]').addEventListener('click', function () {
       execute(code);
-      goToPanel();
+      showPanel();
     });
   });
+  pickProgram(0);
 
   // The phase viewer: each phase shows what it made of the last line you ran.
   function el(tag, className, text) {
@@ -687,6 +746,9 @@ unless(10 &gt; 5, "not greater", "greater");</code></pre>
 
   function renderInspector() {
     inspTitle.textContent = selectedPhase;
+    phaseButtons.forEach(function (b) {
+      if (b.getAttribute('data-phase') === selectedPhase) inspDesc.textContent = b.querySelector('.desc').textContent;
+    });
     inspBody.textContent = '';
 
     if (!last) {
@@ -762,28 +824,111 @@ unless(10 &gt; 5, "not greater", "greater");</code></pre>
   });
   renderInspector();
 
+  // The loader: a small moon that fills from new to full as the download progresses.
+  var panel = document.querySelector('.panel');
+  var loaderMoon = document.getElementById('loader-moon');
+  var loaderMeter = document.getElementById('loader-meter');
+  var loaderTimer = null;
+  var spinner = null;
+
+  // Draws the moon at a fill from 0 (new) to 1 (full), the same way the phases above are drawn.
+  function setMoon(fill) {
+    var k = Math.max(0, Math.min(1, fill)) * 2;
+    var waxing = k < 1;
+    var width = Math.max(0.1, (waxing ? 1 - k : k - 1) * 50).toFixed(1);
+    var edge = waxing ? 50 : 49;
+    loaderMoon.style.background =
+      'var(--craters), radial-gradient(ellipse ' + width + '% 50% at 50% 50%, ' + (waxing ? 'var(--dark)' : 'var(--lit)') + ' 94%, transparent 100%), ' +
+      'linear-gradient(90deg, transparent ' + edge + '%, var(--lit) ' + edge + '%), var(--dark)';
+  }
+
+  function megabytes(bytes) { return (bytes / 1048576).toFixed(1); }
+
+  // Only show the loader if loading takes a moment, so a quick reload does not flash it.
+  function loaderStart() {
+    setMoon(0);
+    loaderTimer = setTimeout(function () { panel.setAttribute('data-loading', 'true'); }, 250);
+  }
+  function loaderStop() {
+    clearTimeout(loaderTimer);
+    if (spinner) cancelAnimationFrame(spinner);
+    panel.removeAttribute('data-loading');
+  }
+
+  // Without a known file size there is no percentage, so the moon slowly waxes and starts over.
+  function loaderSpin() {
+    if (reduceMotion) { setMoon(0.5); return; }
+    var began = performance.now();
+    (function turn(now) {
+      setMoon(((now - began) % 4000) / 4000);
+      spinner = requestAnimationFrame(turn);
+    })(began);
+  }
+
+  function showProgress(received, total) {
+    if (total > 0) {
+      var fraction = Math.min(received / total, 1);
+      setMoon(fraction);
+      loaderMeter.textContent = Math.floor(fraction * 100) + '% · ' + megabytes(received) + ' of ' + megabytes(total) + ' MB';
+      status.textContent = 'loading ' + Math.floor(fraction * 100) + '%';
+    } else {
+      loaderMeter.textContent = megabytes(received) + ' MB';
+      status.textContent = 'loading';
+    }
+  }
+
+  // Downloads selenite.wasm piece by piece so the loader can show how far along it is.
+  async function download() {
+    var response = await fetch('selenite.wasm');
+    if (!response.ok) throw new Error('download failed');
+
+    // A compressed file arrives larger than its Content-Length says, so then the size is unknown.
+    var compressed = response.headers.get('Content-Encoding');
+    var total = compressed ? 0 : parseInt(response.headers.get('Content-Length') || '0', 10);
+
+    if (!response.body || !response.body.getReader) {
+      return new Uint8Array(await response.arrayBuffer());
+    }
+    if (total === 0) loaderSpin();
+
+    var reader = response.body.getReader();
+    var chunks = [];
+    var received = 0;
+    for (;;) {
+      var step = await reader.read();
+      if (step.done) break;
+      chunks.push(step.value);
+      received += step.value.length;
+      showProgress(received, total);
+    }
+
+    var bytes = new Uint8Array(received);
+    var offset = 0;
+    chunks.forEach(function (chunk) {
+      bytes.set(chunk, offset);
+      offset += chunk.length;
+    });
+    return bytes;
+  }
+
   // Downloads and starts the WebAssembly program.
   async function start() {
+    loaderStart();
     var go = new Go();
-    var result;
-    try {
-      result = await WebAssembly.instantiateStreaming(fetch('selenite.wasm'), go.importObject);
-    } catch (e) {
-      // Some servers send the wrong file type; this path does not care.
-      var bytes = await (await fetch('selenite.wasm')).arrayBuffer();
-      result = await WebAssembly.instantiate(bytes, go.importObject);
-    }
+    var bytes = await download();
+    loaderMeter.textContent = 'starting…';
+    var result = await WebAssembly.instantiate(bytes, go.importObject);
     go.run(result.instance); // keeps running, so we do not wait for it
+    loaderStop();
     setEnabled(true);
     status.textContent = 'ready';
-    moonLoading.hidden = true;
     execute('let add = fn(a, b) { a + b; };');
     execute('add(2, 3)');
   }
 
   start().catch(function () {
+    loaderStop();
     status.textContent = 'could not load';
-    moonLoading.hidden = true;
     show('', 'The interpreter could not be loaded. Check that selenite.wasm and wasm_exec.js are next to this page.', true);
   });
 })();
